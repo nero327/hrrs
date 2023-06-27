@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>手写数字识别系统</title>
+    <script src="../static/jquery.min.js"></script>
+</head>
+<body>
+<div id="pannal">
+    <canvas id="canvas" width="300" height="280" style="border:1px solid #000000;background-color:white;"></canvas>
+    <br>
+    <button id="predict_button">识别</button>
+    <form id="upload-form" enctype="multipart/form-data">
+        <input type="file" name="image" id="image-input">
+        <button type="submit">上传图片</button>
+    </form>
+    <p id="prediction"></p>
+</div>
+
+
+<div id="chart-container">
+    <script src="../static/echarts-min.js"></script>
+</div>
+
+<style>
+    body {
+        background-image: url('../static/backiee-102533.png');
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+
+    #pannal {
+        float: left;
+        width: 50%;
+        display: inline-block;
+    }
+
+    #chart-container {
+        position: relative;
+        margin-left: 50%;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+</style>
+<script>
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+    var mouseX, mouseY;
+    var mouseDown = false;
+
+    // 处理鼠标或触摸事件
+    canvas.addEventListener("mousedown", function (e) {
+        mouseX = e.pageX - this.offsetLeft;
+        mouseY = e.pageY - this.offsetTop;
+        mouseDown = true;
+    });
+    var dom = document.getElementById('chart-container');
+    var myChart = echarts.init(dom, null, {
+        renderer: 'canvas',
+        useDirtyRect: false
+    });
+    var app = {};
+
+    var option;
+
+    option = {
+        title: {
+            text: '概率分布',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'item'
+        },
+        series: [
+            {
+                name: 'Access From',
+                type: 'pie',
+                radius: '60%',
+                data: [
+                    {value: 0.1, name: '0'},
+                    {value: 0.1, name: '1'},
+                    {value: 0.1, name: '2'},
+                    {value: 0.1, name: '3'},
+                    {value: 0.1, name: '4'},
+                    {value: 0.1, name: '5'},
+                    {value: 0.1, name: '6'},
+                    {value: 0.1, name: '7'},
+                    {value: 0.1, name: '8'},
+                    {value: 0.1, name: '9'}
+
+
+                ],
+                emphasis: {
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                }
+            }
+        ]
+    }
+    ;
+
+    if (option && typeof option === 'object') {
+        myChart.setOption(option);
+    }
+
+    window.addEventListener('resize', myChart.resize);
+    canvas.addEventListener("mouseup", function (e) {
+        mouseDown = false;
+    });
+
+    canvas.addEventListener("mousemove", function (e) {
+        if (!mouseDown) return;
+        var x = e.pageX - this.offsetLeft;
+        var y = e.pageY - this.offsetTop;
+        ctx.beginPath();
+        ctx.moveTo(mouseX, mouseY);
+        ctx.lineTo(x, y);
+        ctx.lineWidth = 1; // 设置笔画宽度
+        ctx.lineJoin = 'round'; // 设置连接点形状
+        ctx.lineCap = 'round'; // 设置末端形状
+        ctx.stroke();
+        mouseX = x;
+        mouseY = y;
+    });
+
+    canvas.addEventListener("touchstart", function (e) {
+        e.preventDefault();
+        mouseX = e.touches[0].pageX - this.offsetLeft;
+        mouseY = e.touches[0].pageY - this.offsetTop;
+        mouseDown = true;
+    });
+
+    canvas.addEventListener("touchend", function (e) {
+        e.preventDefault();
+        mouseDown = false;
+    });
+
+    canvas.addEventListener("touchmove", function (e) {
+        e.preventDefault();
+        if (!mouseDown) return;
+        var x = e.touches[0].pageX - this.offsetLeft;
+        var y = e.touches[0].pageY - this.offsetTop;
+        ctx.beginPath();
+        ctx.moveTo(mouseX, mouseY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        mouseX = x;
+        mouseY = y;
+    });
+
+
+    // 发送图像数据进行预测
+    $('#predict_button').click(function () {
+        //在canvas上绘制一个白色的矩形，覆盖整个canvas，将背景变为白色。
+        //获取canvas上的图像数据，使用getImageData()函数获取ImageData对象。
+        var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        //遍历ImageData对象中每个像素的RGBA值，将像素的R、G、B三个分量取平均值，如果平均值小于128，说明像素为深色，将该像素的R、G、B三个分量都设置为0（黑色），否则将该像素的R、G、B三个分量都设置为255（白色）。
+        for (var i = 0; i < imgData.data.length; i += 4) {
+
+            imgData.data[i] = 0 ? 0 : 255;
+            imgData.data[i + 1] = 0 ? 0 : 255;
+            imgData.data[i + 2] = 0 ? 0 : 255;
+        }
+        //将修改后的ImageData对象重新绘制到canvas上
+        ctx.putImageData(imgData, 0, 0);
+        var dataURL = canvas.toDataURL();
+        var data = {'image': dataURL};
+        $.ajax({
+            type: "POST",
+            url: "/predict",
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify(data),
+            dataType: "json",
+            success: function (response) {
+                $('#prediction').text('识别结果: ' + response.result);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                option.series[0].data = response.pred;
+                myChart.setOption(option);
+            }
+        });
+    });
+
+    // 绑定表单提交事件
+    $('#upload-form').submit(function (event) {
+        event.preventDefault();
+
+        // 读取文件为 Base64 编码的字符串
+        var file = $('#image-input')[0].files[0];
+        var reader = new FileReader();
+        reader.onload = function () {
+            var image_base64 = reader.result.split(',')[1];
+
+            // 构造 JSON 对象并传递到服务器端
+            var json_data = {
+                'image': image_base64
+            };
+            $.ajax({
+                type: 'POST',
+                url: '/upload',
+                data: JSON.stringify(json_data),
+                contentType: 'application/json',
+                success: function (response) {
+                    $('#prediction').text('识别结果: ' + response.result);
+                    option.series[0].data = response.pred;
+                    myChart.setOption(option);
+
+                }
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+
+</script>
+</body>
+</html>
