@@ -1,10 +1,9 @@
 from flask import Flask, jsonify, request, render_template
-from PIL import Image, ImageOps, ImageFilter
+from PIL import Image
 import base64
 import io
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
 import warnings
 
 from werkzeug.utils import secure_filename
@@ -14,7 +13,7 @@ warnings.filterwarnings("ignore", message="This is a development server. Do not 
 app = Flask(__name__)
 
 # 加载训练好的模型
-model = tf.keras.models.load_model('model/model1.h5')
+model = tf.keras.models.load_model('model1.h5')
 
 print(model.summary())
 print(model.input_shape)
@@ -51,8 +50,8 @@ def predict():
 
     # 对图像进行预处理
     image = np.array(image.resize((28, 28)))
-    plt.imshow(image, cmap='gray')
-    plt.show()
+    # plt.imshow(image, cmap='gray')
+    # plt.show()
     # plt.imsave('test2.png', image, cmap='gray')
     image = image.reshape((1, 28, 28, 1))
     image = image / 255.0
@@ -118,8 +117,8 @@ def upload():
         return jsonify({'error': '无法识别的图像格式'})
     # 对图像进行预处理
     image = np.array(image.resize((28, 28)))
-    plt.imshow(image, cmap='gray')
-    plt.show()
+    # plt.imshow(image, cmap='gray')
+    # plt.show()
     image = image.reshape((1, 28, 28, 1))
     image = image / 255.0
 
