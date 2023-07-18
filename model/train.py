@@ -78,4 +78,4 @@
     plt.tight_layout()
     plt.show()
     # 保存模型
-    model.save('model2.h5')
+    model.save('model2.keras')
